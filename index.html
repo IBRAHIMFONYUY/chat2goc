@@ -1,0 +1,806 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat2Go - Rahim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .message-bubble {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .status-ring {
+            background: conic-gradient(from 0deg, #10b981, #3b82f6, #8b5cf6, #f59e0b, #10b981);
+        }
+        .chat-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+        .chat-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        .recording {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
+            <!-- Header -->
+            <div class="p-4 bg-emerald-600 text-white">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-xl font-bold">Chat2Go</h1>
+                    <div class="flex space-x-2">
+                        <button class="p-2 hover:bg-emerald-700 rounded-full transition-colors" onclick="showStatusModal()">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                                <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <button class="p-2 hover:bg-emerald-700 rounded-full transition-colors" onclick="showUserProfile()">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Stories -->
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Status Updates</h3>
+                <div class="flex space-x-3 overflow-x-auto">
+                    <div class="flex-shrink-0 text-center cursor-pointer" onclick="showStatusModal()">
+                        <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-1">
+                            <svg class="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <span class="text-xs text-gray-600">My Status</span>
+                    </div>
+                    <div id="statusList" class="flex space-x-3">
+                        <!-- status items will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="p-4 border-b border-gray-200">
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Search chats..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" onkeyup="searchChats()">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Chat List -->
+            <div class="flex-1 overflow-y-auto chat-scroll">
+                <div class="chat-item p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 bg-emerald-50" onclick="selectChat('General Chat', 'general')">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold">G</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-medium text-gray-900 truncate">General Chat</h4>
+                                <span class="text-xs text-gray-500" id="lastMessageTime">Now</span>
+                            </div>
+                            <p class="text-sm text-gray-600 truncate" id="lastMessage">Start chatting...</p>
+                        </div>
+                        <div id="unreadCount" class="hidden w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <span class="text-xs text-white font-bold">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col">
+            <!-- Chat Header -->
+            <div id="chatHeader" class="p-4 bg-white border-b border-gray-200 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div id="chatAvatar" class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold">G</div>
+                        <div>
+                            <h3 id="chatName" class="font-medium text-gray-900">General Chat</h3>
+                            <p id="chatStatus" class="text-sm text-emerald-600">Online</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="p-2 hover:bg-gray-100 rounded-full transition-colors" onclick="startVoiceCall()">
+                            <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                            </svg>
+                        </button>
+                        <button class="p-2 hover:bg-gray-100 rounded-full transition-colors" onclick="startVideoCall()">
+                            <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                            </svg>
+                        </button>
+                        <button class="p-2 hover:bg-gray-100 rounded-full transition-colors" onclick="clearChat()">
+                            <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                                <path fill-rule="evenodd" d="M10 5a2 2 0 00-2 2v6a2 2 0 004 0V7a2 2 0 00-2-2zM8 7a2 2 0 012-2h.01a2 2 0 010 4H10a2 2 0 01-2-2z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 chat-scroll bg-gray-50">
+                <!-- Messages will be populated here -->
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="typingIndicator" class="hidden px-4 py-2 text-sm text-gray-500">
+                <div class="flex items-center space-x-2">
+                    <div class="flex space-x-1">
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                    <span>Someone is typing...</span>
+                </div>
+            </div>
+
+            <!-- Message Input -->
+            <div class="p-4 bg-white border-t border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <button class="p-2 hover:bg-gray-100 rounded-full transition-colors" onclick="toggleAttachMenu()">
+                        <svg class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+
+                    <div class="flex-1 relative">
+                        <input 
+                            type="text" 
+                            id="messageInput" 
+                            placeholder="Type a message..." 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-emerald-500 focus:border-transparent pr-12"
+                            onkeypress="handleKeyPress(event)"
+                            oninput="handleTyping()"
+                        >
+                        <button class="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors" onclick="showEmojiPicker()">
+                            <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zM9 9a1 1 0 100-2 1 1 0 000 2zM13 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <button 
+                        id="voiceButton" 
+                        class="p-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full transition-colors"
+                        onmousedown="startVoiceRecording()" 
+                        onmouseup="stopVoiceRecording()"
+                        ontouchstart="startVoiceRecording()" 
+                        ontouchend="stopVoiceRecording()"
+                    >
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+
+                    <button 
+                        id="sendButton" 
+                        class="p-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full transition-colors"
+                        onclick="sendMessage()"
+                    >
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Attachment Menu -->
+                <div id="attachMenu" class="hidden mt-3 p-3 bg-gray-50 rounded-lg">
+                    <div class="grid grid-cols-4 gap-3">
+                        <button class="flex flex-col items-center p-3 hover:bg-white rounded-lg transition-colors" onclick="selectFile('image')">
+                            <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center mb-2">
+                                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-gray-700">Photos</span>
+                        </button>
+                        <button class="flex flex-col items-center p-3 hover:bg-white rounded-lg transition-colors" onclick="selectFile('document')">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mb-2">
+                                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-gray-700">Document</span>
+                        </button>
+                        <button class="flex flex-col items-center p-3 hover:bg-white rounded-lg transition-colors" onclick="shareLocation()">
+                            <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center mb-2">
+                                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-gray-700">Location</span>
+                        </button>
+                        <button class="flex flex-col items-center p-3 hover:bg-white rounded-lg transition-colors" onclick="selectFile('video')">
+                            <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center mb-2">
+                                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-gray-700">Video</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Modal -->
+    <div id="statusModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96 max-w-90vw">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-900">Add Status</h3>
+                <button onclick="closeStatusModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+            <textarea 
+                id="statusText" 
+                placeholder="What's on your mind?" 
+                class="w-full p-3 border border-gray-300 rounded-lg resize-none h-24 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            ></textarea>
+            <div class="flex justify-between items-center mt-4">
+                <div class="flex space-x-2">
+                    <button class="p-2 hover:bg-gray-100 rounded-full transition-colors" onclick="selectStatusFile()">
+                        <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                    <button class="p-2 hover:bg-gray-100 rounded-full transition-colors" onclick="showEmojiPicker()">
+                        <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zM9 9a1 1 0 100-2 1 1 0 000 2zM13 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+                <button onclick="postStatus()" class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors">
+                    Post Status
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Input (Hidden) -->
+    <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(event)">
+
+    <script type="module">
+        // Import Firebase from CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-storage.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCmUK9uS8ZkUR1_xqRdquDCRRrlf5QXjF0",
+            authDomain: "chat2go-25347.firebaseapp.com",
+            projectId: "chat2go-25347",
+            storageBucket: "chat2go-25347.firebasestorage.app",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:497b0204bf15ec91640322",
+            measurementId: "G-8L6TVZHSXN"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Global variables
+        let currentChat = 'general';
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+        let typingTimeout;
+        let userName = 'User' + Math.floor(Math.random() * 1000);
+
+        // DOM elements
+        const chatBox = document.getElementById("messagesContainer");
+        const input = document.getElementById("messageInput");
+        const sendBtn = document.getElementById("sendButton");
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            setupRealtimeListeners();
+            setupStatusListener();
+            console.log('ChatApp initialized with Firebase!');
+        });
+
+        // Setup real-time message listener
+        function setupRealtimeListeners() {
+            const q = query(collection(db, "messages"), orderBy("createdAt"));
+            onSnapshot(q, (snapshot) => {
+                chatBox.innerHTML = "";
+                snapshot.forEach((doc) => {
+                    const msg = doc.data();
+                    addMessageToUI(msg, doc.id);
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+                updateLastMessage();
+            });
+        }
+
+        // Setup status listener
+        function setupStatusListener() {
+            const q = query(collection(db, "status"), orderBy("createdAt", "desc"));
+            onSnapshot(q, (snapshot) => {
+                const statusList = document.getElementById("statusList");
+                statusList.innerHTML = "";
+                snapshot.forEach((doc) => {
+                    const status = doc.data();
+                    addStatusToUI(status);
+                });
+            });
+        }
+
+        // Send message function
+        window.sendMessage = async function() {
+            const text = input.value.trim();
+            if (text === "") return;
+
+            try {
+                await addDoc(collection(db, "messages"), {
+                    text: text,
+                    sender: userName,
+                    type: 'text',
+                    createdAt: serverTimestamp()
+                });
+                input.value = "";
+                showNotification("Message sent!");
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showNotification("Failed to send message", "error");
+            }
+        };
+
+        // Add message to UI
+        function addMessageToUI(msg, docId) {
+            const messageDiv = document.createElement('div');
+            const isMe = msg.sender === userName;
+            messageDiv.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+            
+            const time = msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now';
+            const bgColor = isMe ? 'bg-emerald-500 text-white' : 'bg-white';
+            const textColor = isMe ? 'text-emerald-100' : 'text-gray-500';
+
+            let messageContent = '';
+            
+            if (msg.type === 'file') {
+                const fileIcon = getFileIcon(msg.fileType);
+                messageContent = `
+                    <div class="message-bubble max-w-xs lg:max-w-md px-4 py-2 ${bgColor} rounded-lg shadow-sm">
+                        <div class="flex items-center space-x-2 mb-2">
+                            ${fileIcon}
+                            <div>
+                                <p class="font-medium ${isMe ? 'text-white' : 'text-gray-800'}">${msg.fileName}</p>
+                                <p class="text-xs ${textColor}">${msg.fileSize || 'Unknown size'}</p>
+                            </div>
+                        </div>
+                        ${!isMe ? `<p class="text-xs text-blue-600 font-medium mb-1">${msg.sender}</p>` : ''}
+                        <span class="text-xs ${textColor}">${time}${isMe ? ' ✓✓' : ''}</span>
+                    </div>
+                `;
+            } else if (msg.type === 'voice') {
+                messageContent = `
+                    <div class="message-bubble max-w-xs lg:max-w-md px-4 py-2 ${bgColor} rounded-lg shadow-sm">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                            </svg>
+                            <div class="flex-1 bg-${isMe ? 'emerald-400' : 'gray-300'} rounded-full h-2">
+                                <div class="bg-${isMe ? 'white' : 'gray-600'} h-2 rounded-full w-3/4"></div>
+                            </div>
+                            <span class="text-xs">0:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}</span>
+                        </div>
+                        ${!isMe ? `<p class="text-xs text-blue-600 font-medium mt-1">${msg.sender}</p>` : ''}
+                        <span class="text-xs ${textColor} mt-1 block">${time}${isMe ? ' ✓✓' : ''}</span>
+                    </div>
+                `;
+            } else if (msg.type === 'location') {
+                messageContent = `
+                    <div class="message-bubble max-w-xs lg:max-w-md px-4 py-2 ${bgColor} rounded-lg shadow-sm">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <svg class="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                            </svg>
+                            <div>
+                                <p class="font-medium ${isMe ? 'text-white' : 'text-gray-800'}">Location Shared</p>
+                                <p class="text-xs ${textColor}">${msg.text}</p>
+                            </div>
+                        </div>
+                        ${!isMe ? `<p class="text-xs text-blue-600 font-medium mb-1">${msg.sender}</p>` : ''}
+                        <span class="text-xs ${textColor}">${time}${isMe ? ' ✓✓' : ''}</span>
+                    </div>
+                `;
+            } else {
+                messageContent = `
+                    <div class="message-bubble max-w-xs lg:max-w-md px-4 py-2 ${bgColor} rounded-lg shadow-sm">
+                        ${!isMe ? `<p class="text-xs text-blue-600 font-medium mb-1">${msg.sender}</p>` : ''}
+                        <p class="${isMe ? 'text-white' : 'text-gray-800'}">${msg.text}</p>
+                        <span class="text-xs ${textColor} mt-1 block">${time}${isMe ? ' ✓✓' : ''}</span>
+                    </div>
+                `;
+            }
+            
+            messageDiv.innerHTML = messageContent;
+            chatBox.appendChild(messageDiv);
+        }
+
+        // Get file icon based on file type
+        function getFileIcon(fileType) {
+            if (fileType && fileType.startsWith('image/')) {
+                return `<svg class="w-8 h-8 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                </svg>`;
+            } else if (fileType && fileType.startsWith('video/')) {
+                return `<svg class="w-8 h-8 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                </svg>`;
+            } else {
+                return `<svg class="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                </svg>`;
+            }
+        }
+
+        // Handle key press
+        window.handleKeyPress = function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        };
+
+        // Handle typing indicator
+        window.handleTyping = function() {
+            clearTimeout(typingTimeout);
+            showTypingIndicator();
+            
+            typingTimeout = setTimeout(() => {
+                hideTypingIndicator();
+            }, 1000);
+        };
+
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').classList.remove('hidden');
+        }
+
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').classList.add('hidden');
+        }
+
+        // Voice recording functions
+        window.startVoiceRecording = async function() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    await uploadVoiceMessage(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                const button = document.getElementById('voiceButton');
+                button.classList.add('bg-red-500', 'hover:bg-red-600', 'recording');
+                button.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
+                
+                showNotification("Recording voice message...");
+            } catch (error) {
+                console.error("Error accessing microphone:", error);
+                showNotification("Microphone access denied", "error");
+            }
+        };
+
+        window.stopVoiceRecording = function() {
+            if (!isRecording || !mediaRecorder) return;
+            
+            mediaRecorder.stop();
+            isRecording = false;
+            
+            const button = document.getElementById('voiceButton');
+            button.classList.remove('bg-red-500', 'hover:bg-red-600', 'recording');
+            button.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
+        };
+
+        // Upload voice message
+        async function uploadVoiceMessage(audioBlob) {
+            try {
+                const fileName = `voice_${Date.now()}.wav`;
+                const storageRef = ref(storage, `voice_messages/${fileName}`);
+                
+                await uploadBytes(storageRef, audioBlob);
+                const downloadURL = await getDownloadURL(storageRef);
+                
+                await addDoc(collection(db, "messages"), {
+                    type: 'voice',
+                    sender: userName,
+                    fileUrl: downloadURL,
+                    fileName: fileName,
+                    createdAt: serverTimestamp()
+                });
+                
+                showNotification("Voice message sent!");
+            } catch (error) {
+                console.error("Error uploading voice message:", error);
+                showNotification("Failed to send voice message", "error");
+            }
+        }
+
+        // File attachment functions
+        window.toggleAttachMenu = function() {
+            const menu = document.getElementById('attachMenu');
+            menu.classList.toggle('hidden');
+        };
+
+        window.selectFile = function(type) {
+            const fileInput = document.getElementById('fileInput');
+            
+            switch(type) {
+                case 'image':
+                    fileInput.accept = 'image/*';
+                    break;
+                case 'document':
+                    fileInput.accept = '.pdf,.doc,.docx,.txt,.xlsx,.pptx';
+                    break;
+                case 'video':
+                    fileInput.accept = 'video/*';
+                    break;
+                default:
+                    fileInput.accept = '*/*';
+            }
+            
+            fileInput.click();
+            toggleAttachMenu();
+        };
+
+        window.handleFileSelect = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                showNotification("Uploading file...");
+                
+                const fileName = `${Date.now()}_${file.name}`;
+                const storageRef = ref(storage, `files/${fileName}`);
+                
+                await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(storageRef);
+                
+                await addDoc(collection(db, "messages"), {
+                    type: 'file',
+                    sender: userName,
+                    fileName: file.name,
+                    fileSize: (file.size / 1024 / 1024).toFixed(1) + ' MB',
+                    fileType: file.type,
+                    fileUrl: downloadURL,
+                    createdAt: serverTimestamp()
+                });
+                
+                showNotification("File sent successfully!");
+            } catch (error) {
+                console.error("Error uploading file:", error);
+                showNotification("Failed to upload file", "error");
+            }
+            
+            event.target.value = '';
+        };
+
+        // Location sharing
+        window.shareLocation = function() {
+            if (navigator.geolocation) {
+                showNotification("Getting your location...");
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    
+                    try {
+                        await addDoc(collection(db, "messages"), {
+                            type: 'location',
+                            sender: userName,
+                            text: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+                            latitude: latitude,
+                            longitude: longitude,
+                            createdAt: serverTimestamp()
+                        });
+                        
+                        showNotification("Location shared!");
+                    } catch (error) {
+                        console.error("Error sharing location:", error);
+                        showNotification("Failed to share location", "error");
+                    }
+                }, (error) => {
+                    console.error("Geolocation error:", error);
+                    showNotification("Location access denied", "error");
+                });
+            } else {
+                showNotification("Geolocation not supported", "error");
+            }
+        };
+
+        // Status functions
+        window.showStatusModal = function() {
+            document.getElementById('statusModal').classList.remove('hidden');
+        };
+
+        window.closeStatusModal = function() {
+            document.getElementById('statusModal').classList.add('hidden');
+            document.getElementById('statusText').value = '';
+        };
+
+        window.postStatus = async function() {
+            const statusText = document.getElementById('statusText').value.trim();
+            if (!statusText) return;
+            
+            try {
+                await addDoc(collection(db, "status"), {
+                    text: statusText,
+                    author: userName,
+                    createdAt: serverTimestamp(),
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+                });
+                
+                showNotification("Status posted!");
+                closeStatusModal();
+            } catch (error) {
+                console.error("Error posting status:", error);
+                showNotification("Failed to post status", "error");
+            }
+        };
+
+        // Add status to UI
+        function addStatusToUI(status) {
+            const statusList = document.getElementById("statusList");
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'flex-shrink-0 text-center cursor-pointer';
+            
+            const initial = status.author.charAt(0).toUpperCase();
+            const colors = ['bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-green-500'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            statusDiv.innerHTML = `
+                <div class="w-12 h-12 status-ring rounded-full p-0.5">
+                    <div class="w-full h-full ${color} rounded-full flex items-center justify-center text-white font-bold">${initial}</div>
+                </div>
+                <span class="text-xs text-gray-600">${status.author}</span>
+            `;
+            
+            statusDiv.onclick = () => {
+                alert(`${status.author}: ${status.text}`);
+            };
+            
+            statusList.appendChild(statusDiv);
+        }
+
+        // Utility functions
+        window.selectChat = function(name, chatId) {
+            currentChat = chatId;
+            document.getElementById('chatName').textContent = name;
+            document.getElementById('chatAvatar').textContent = name.charAt(0);
+        };
+
+        window.clearChat = async function() {
+            if (confirm('Are you sure you want to clear all messages?')) {
+                try {
+                    const q = query(collection(db, "messages"));
+                    const snapshot = await getDocs(q);
+                    
+                    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+                    await Promise.all(deletePromises);
+                    
+                    showNotification("Chat cleared!");
+                } catch (error) {
+                    console.error("Error clearing chat:", error);
+                    showNotification("Failed to clear chat", "error");
+                }
+            }
+        };
+
+        window.searchChats = function() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            // Implement search functionality
+            console.log('Searching for:', searchTerm);
+        };
+
+        window.startVoiceCall = function() {
+            showNotification("Voice call feature coming soon!");
+        };
+
+        window.startVideoCall = function() {
+            showNotification("Video call feature coming soon!");
+        };
+
+        window.showUserProfile = function() {
+            alert(`User: ${userName}\nStatus: Online`);
+        };
+
+        window.showEmojiPicker = function() {
+            const emojis = ['😀', '😂', '😍', '🤔', '👍', '❤️', '🔥', '💯'];
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            const input = document.getElementById('messageInput');
+            input.value += emoji;
+            input.focus();
+        };
+
+        window.selectStatusFile = function() {
+            showNotification("Status file upload coming soon!");
+        };
+
+        // Update last message in sidebar
+        function updateLastMessage() {
+            const messages = chatBox.children;
+            if (messages.length > 0) {
+                const lastMessage = messages[messages.length - 1];
+                const messageText = lastMessage.textContent.split('\n')[0];
+                document.getElementById('lastMessage').textContent = messageText.substring(0, 30) + '...';
+                document.getElementById('lastMessageTime').textContent = 'Now';
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg text-white z-50 ${type === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Close attachment menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const attachMenu = document.getElementById('attachMenu');
+            const attachButton = event.target.closest('button');
+            
+            if (!attachMenu.contains(event.target) && attachButton?.onclick !== toggleAttachMenu) {
+                attachMenu.classList.add('hidden');
+            }
+        });
+
+        // Close status modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('statusModal');
+            if (event.target === modal) {
+                closeStatusModal();
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9730e32750206d5c',t:'MTc1NTg1MDE1OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
